@@ -1,0 +1,46 @@
+export const meta = {
+    title: "Fine-tuning Small LLMs: A Practical Guide",
+    slug: "fine-tuning-small-llms",
+    date: "2025-07-22",
+    tags: ["LLM", "Fine-tuning", "LoRA", "Training"],
+    summary: "When and how to fine-tune <10B parameter models effectively.",
+};
+
+import { Callout } from "../../src/ui/mdx/Callout";
+import { Warning } from "../../src/ui/mdx/Warning";
+
+# Fine-tuning Small LLMs: A Practical Guide
+
+Small LLMs (3B–8B) can be excellent with the right data and adapters.
+
+## When to fine-tune
+
+-   Domain-specific jargon
+-   Structured extraction with consistent formats
+-   Latency/cost constraints
+
+## Setup
+
+```bash
+# LoRA with bitsandbytes (pseudo)
+pip install transformers peft bitsandbytes accelerate datasets
+```
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft import LoraConfig, get_peft_model
+
+model = AutoModelForCausalLM.from_pretrained("phi-3-mini", device_map="auto")
+tok = AutoTokenizer.from_pretrained("phi-3-mini")
+
+config = LoraConfig(r=8, lora_alpha=16, lora_dropout=0.05, target_modules=["q_proj","v_proj"])
+model = get_peft_model(model, config)
+```
+
+<Callout>
+    Prefer SFT over RLHF unless you really need preference alignment.
+</Callout>
+
+<Warning>
+    Always validate on downstream tasks; perplexity alone is misleading.
+</Warning>

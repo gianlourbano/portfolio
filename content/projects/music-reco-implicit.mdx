@@ -1,0 +1,34 @@
+export const meta = {
+    title: "Music Recommendation with Implicit Feedback",
+    slug: "music-reco-implicit",
+    date: "2025-08-18",
+    tags: ["Recommender", "Matrix Factorization", "Implicit"],
+    summary:
+        "ALS on implicit feedback with artist and track factors, plus fast ANN serving.",
+};
+
+import { Files } from "../../src/ui/mdx/Files";
+
+# Music Recommendation with Implicit Feedback
+
+Matrix factorization on user–item play counts with confidence weighting.
+
+## Approach
+
+-   Build sparse COO from play counts
+-   Weighted-ALS (Hu–Koren–Volinsky)
+-   Serve with ANN index (HNSW)
+
+```python
+# pseudo: build COO
+i, j, v = plays.user_id, plays.track_id, plays.count
+R = coo_matrix((v, (i, j)), shape=(n_users, n_items))
+```
+
+<Files
+    files={[
+        "/notebooks/als.ipynb",
+        "/service/reco.py",
+        "/infra/docker-compose.yml",
+    ]}
+/>

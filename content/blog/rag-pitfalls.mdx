@@ -1,0 +1,64 @@
+export const meta = {
+    title: "RAG Pitfalls and How to Avoid Them",
+    slug: "rag-pitfalls",
+    date: "2025-09-05",
+    tags: ["RAG", "LLM", "Retrieval", "Evaluation"],
+    summary:
+        "Common failure modes in Retrieval-Augmented Generation and practical mitigations.",
+};
+
+import { Callout } from "../../src/ui/mdx/Callout";
+import { Note } from "../../src/ui/mdx/Note";
+
+# RAG Pitfalls and How to Avoid Them
+
+RAG systems are powerful, but they’re easy to misconfigure. Here are frequent issues and fixes.
+
+<Callout>
+    Always measure retrieval quality separately from generation quality.
+</Callout>
+
+## 1) Indexing blind spots
+
+-   Missing file types (PDF, tables)
+-   Chunking that splits entities mid-sentence
+-   No canonicalization (e.g., unicode, punctuation)
+
+```ts
+// pseudo: clean text before chunking
+function normalize(text: string) {
+    return text
+        .replace(/[\u2018\u2019]/g, "'")
+        .replace(/[\u201C\u201D]/g, '"')
+        .replace(/\s+/g, " ") // collapse whitespace
+        .trim();
+}
+```
+
+## 2) Recall vs. precision imbalance
+
+-   Too small k misses context; too large k induces distraction
+-   Use MRR@k, nDCG@k to tune
+
+<Note>Start with k=5 and rerank to 3–5 passages before prompting.</Note>
+
+## 3) Query drift and paraphrasing
+
+-   Expand queries with multi-vector (query, paraphrase, entities)
+-   Guard with filters (time, source)
+
+## 4) Evaluation gaps
+
+-   Don’t evaluate only ROUGE/BLEU—use groundedness checks, judge LLMs with calibrated prompts.
+
+```python
+# quick groundedness score
+supports = all(claim in " ".join(ctx).lower() for claim in claims)
+score = 1.0 if supports else 0.0
+```
+
+## Checklist
+
+-   Clean & normalize → robust chunking → dual encoders or reranking
+-   Tune k and add filters → test live queries
+-   Measure retrieval and answer quality separately

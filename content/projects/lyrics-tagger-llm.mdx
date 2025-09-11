@@ -1,0 +1,18 @@
+export const meta = {
+    title: "LLM-powered Lyrics Tagger",
+    slug: "lyrics-tagger-llm",
+    date: "2025-06-30",
+    tags: ["LLM", "NLP", "Music"],
+    summary: "Zero/low-shot tagging of lyrics with safety and emotion labels.",
+};
+
+import { Note } from "../../src/ui/mdx/Note";
+
+# LLM-powered Lyrics Tagger
+
+A lightweight service to label lyrics with emotions, topics, and safety flags.
+
+-   Prompts enforce schema via JSON output
+-   Robustness via test-time augmentation (paraphrases)
+
+<Note>Cache embeddings and responses to cut latency and cost.</Note>

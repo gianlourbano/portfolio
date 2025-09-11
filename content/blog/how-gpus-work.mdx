@@ -1,0 +1,93 @@
+export const meta = {
+    title: "How GPUs Work",
+    slug: "how-gpus-work",
+    date: "2025-09-11",
+    tags: ["gpu", "graphics", "compute", "architecture"],
+    summary:
+        "A friendly tour of GPU architecture, SIMT execution, memory hierarchy, and the graphics pipeline—with visuals and examples.",
+    cover: "https://placehold.co/1200x630?text=How+GPUs+Work",
+};
+
+# How GPUs Work
+
+GPUs are massively parallel processors designed to run tens of thousands of lightweight threads at once. They shine when the same program must be run across many data elements—like pixels in an image, vertices in a mesh, or rows in a matrix.
+
+> TL;DR: A GPU trades single-thread latency for extreme throughput using wide SIMD/SIMT execution, fast on-chip memory, and a scheduling model that keeps the compute units busy.
+
+## GPU vs CPU at a glance
+
+|             | CPU                                  | GPU                                      |
+| ----------- | ------------------------------------ | ---------------------------------------- |
+| Core design | Few complex, latency-optimized cores | Many simple, throughput-optimized cores  |
+| Execution   | Out-of-order, branchy, caches        | SIMT/SIMD warps, fine-grained scheduling |
+| Best for    | Control-heavy, low-latency tasks     | Data-parallel, high-throughput tasks     |
+| Threads     | Tens to hundreds                     | Thousands to tens of thousands           |
+
+## Big picture: the graphics/compute pipeline
+
+Below is a simplified diagram placeholder. Replace it with a public-domain/CC image when you pick one.
+
+![Simplified GPU pipeline diagram showing stages from input data to shaders to rasterization to output](https://placehold.co/1000x420/png?text=GPU+Pipeline+Diagram)
+
+_Source suggestion: Search for a “GPU graphics pipeline” diagram on Wikimedia Commons and use the original image URL with attribution._
+
+## SIMT, warps, and divergence
+
+GPUs execute groups of threads in lockstep (NVIDIA calls them warps; AMD calls them wavefronts). All threads in a warp issue the same instruction per cycle, each operating on different data. When threads take different branches, the warp serializes those paths (divergence), reducing efficiency.
+
+```cuda
+// Pseudo-CUDA: vector add (C = A + B)
+__global__ void vecAdd(const float* A, const float* B, float* C, int N) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x; // each thread gets an index
+  if (i < N) {
+    C[i] = A[i] + B[i];
+  }
+}
+```
+
+-   Threads are batched into blocks; blocks are scheduled on streaming multiprocessors (SMs).
+-   Each SM runs multiple warps and swaps between them to hide latency (e.g., memory stalls).
+
+## Memory hierarchy (fast to large)
+
+-   Registers (per thread) — fastest
+-   Shared memory / L1 (per SM) — very fast, programmer-managed for tiling
+-   L2 cache — chip-wide
+-   Global/device memory (DRAM) — large but much slower than on-chip memory
+
+A placeholder memory diagram:
+
+![GPU memory hierarchy pyramid showing registers, shared memory, L2, and global memory](https://placehold.co/900x360/png?text=GPU+Memory+Hierarchy)
+
+_Source suggestion: Look up “GPU memory hierarchy diagram” on Wikimedia Commons. Many diagrams are CC BY-SA. Include author + license in a caption when you replace this image._
+
+## Why GPUs are fast for ML
+
+-   The same math (matrix multiplications, convolutions) repeats across huge tensors.
+-   Kernels are highly data-parallel with predictable memory access patterns.
+-   Specialized units (Tensor Cores/Matrix Cores) accelerate fused matrix ops at low precision.
+
+## Classic graphics pipeline (very short)
+
+1. Vertex processing (vertex shader transforms positions)
+2. Primitive assembly (triangles)
+3. Rasterization (fragments/pixels)
+4. Fragment/pixel shading (lighting/texturing)
+5. Output merger/framebuffer
+
+```glsl
+// Tiny GLSL fragment shader example
+precision mediump float;
+uniform vec4 color;
+void main() {
+  gl_FragColor = color; // set pixel color
+}
+```
+
+## Further reading
+
+-   NVIDIA or AMD architecture whitepapers for a specific generation
+-   “GPU Gems” (books) and the CUDA Programming Guide
+-   OpenGL/Vulkan tutorial series on modern graphics pipelines
+
+> Tip: When you replace the placeholder images, prefer media from Wikimedia Commons or vendors with clear licenses. Add a small caption with author + license.

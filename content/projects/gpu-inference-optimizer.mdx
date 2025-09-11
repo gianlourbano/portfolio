@@ -1,0 +1,26 @@
+export const meta = {
+    title: "GPU Inference Cost Optimizer",
+    slug: "gpu-inference-optimizer",
+    date: "2025-05-12",
+    tags: ["GPU", "Inference", "Optimization"],
+    summary:
+        "Autosizes batch, precision, and KV cache for lowest $/req under latency SLOs.",
+};
+
+# GPU Inference Cost Optimizer
+
+A small tool to sweep batch size, quantization (FP16/INT8), and KV cache size, predicting throughput and latency using microbenchmarks.
+
+## Features
+
+-   Microbenchmark kernels and end-to-end steps
+-   Fit simple latency model: T = \u03b1 + \u03b2 _ batch + \u03b3 _ tokens
+-   Simulate SLOs and choose the cheapest config
+
+```python
+# pseudo
+for b in [1,2,4,8,16]:
+  for prec in ["fp16","int8"]:
+    t = bench(model, b, prec)
+    log(b, prec, t)
+```

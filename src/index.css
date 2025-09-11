@@ -1,0 +1,759 @@
+:root {
+    --bg: #0f1220;
+    --fg: #e6e6e6;
+    --muted: #a0a0a0;
+    --panel: #1b1f36;
+    --panel-2: #232848;
+    --accent: #6ea0ff;
+}
+:root[data-theme="light"] {
+    --bg: #f6f7fb;
+    --fg: #1f1f1f;
+    --muted: #5f5f6a;
+    --panel: #ffffff;
+    --panel-2: #f1f3f9;
+    --accent: #2d6cff;
+}
+/* Retro theme (Win95-ish) */
+:root[data-theme="retro"] {
+    --bg: #008080; /* teal desktop */
+    --fg: #111;
+    --muted: #333;
+    --panel: #c0c0c0; /* classic gray */
+    --panel-2: #c0c0c0;
+    --accent: #000080; /* navy */
+}
+
+* {
+    box-sizing: border-box;
+}
+html,
+body,
+#root {
+    height: 100%;
+}
+body {
+    margin: 0;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+        Inter, Arial, sans-serif;
+    color: var(--fg);
+    background: var(--bg);
+}
+:root[data-theme="retro"] body {
+    font-family: "ChicagoFLF", "Pixelated MS Sans Serif", Tahoma, Geneva,
+        Verdana, sans-serif;
+}
+
+/* Desktop */
+.desktop {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+.wallpaper {
+    position: absolute;
+    inset: 0;
+    background-color: #008080;
+    /* base-aware URL is injected into --wallpaper-image at startup */
+    background-image: var(--wallpaper-image);
+    background-repeat: repeat;
+    background-size: var(--wallpaper-size, 128px) var(--wallpaper-size, 128px);
+}
+
+/* Dock */
+.dock {
+    position: absolute;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    padding: 8px 10px;
+    background: color-mix(in hsl, var(--panel), transparent 25%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    backdrop-filter: blur(12px);
+}
+.dock-btn {
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--fg);
+    background: var(--panel);
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.dock-btn:hover {
+    border-color: var(--accent);
+}
+:root[data-theme="retro"] .dock {
+    background: #c0c0c0;
+    border-radius: 0;
+    border: 2px solid #fff;
+    border-bottom-color: #404040;
+    border-right-color: #404040;
+    box-shadow: inset -1px -1px 0 #000, inset 1px 1px 0 #fff;
+}
+:root[data-theme="retro"] .dock-btn {
+    background: #c0c0c0;
+    border-radius: 0;
+    border: 2px solid #fff;
+    border-bottom-color: #404040;
+    border-right-color: #404040;
+    box-shadow: inset -1px -1px 0 #000, inset 1px 1px 0 #fff;
+}
+:root[data-theme="retro"] .dock-btn:active {
+    border-top-color: #404040;
+    border-left-color: #404040;
+    border-bottom-color: #fff;
+    border-right-color: #fff;
+}
+
+/* Window */
+.window {
+    position: absolute;
+    background: color-mix(in hsl, var(--panel), white 0%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+}
+.window-titlebar {
+    height: 38px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    background: var(--panel-2);
+    user-select: none;
+    cursor: move;
+}
+.win-controls {
+    margin-left: auto;
+    display: inline-flex;
+    gap: 4px;
+}
+.win-btn {
+    appearance: none;
+    border: 2px solid #fff;
+    border-bottom-color: #404040;
+    border-right-color: #404040;
+    background: #c0c0c0;
+    padding: 0 8px;
+    height: 20px;
+    line-height: 16px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.win-btn.close {
+    color: #900;
+}
+.traffic {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    display: inline-block;
+    border: 1px solid rgba(0, 0, 0, 0.25);
+}
+.dot.red {
+    background: #ff5f57;
+}
+.dot.yellow {
+    background: #ffbd2e;
+}
+.dot.green {
+    background: #28c840;
+}
+.title {
+    font-weight: 600;
+    opacity: 0.9;
+}
+.window-body {
+    height: calc(100% - 32px);
+    padding: 10px;
+    overflow: auto;
+}
+:root[data-theme="retro"] .window-body {
+    position: relative;
+}
+.resize-handle {
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    width: 16px;
+    height: 16px;
+    cursor: nwse-resize;
+    opacity: 0.85;
+    z-index: 2;
+}
+:root[data-theme="retro"] .resize-handle {
+    background: linear-gradient(135deg, transparent 50%, #000 50%),
+        linear-gradient(135deg, #fff 0, #fff 0);
+    background-size: 100% 100%, 100% 100%;
+    mix-blend-mode: multiply;
+}
+:root[data-theme="retro"] .window {
+    background: #c0c0c0;
+    border-radius: 0;
+    border: 2px solid #fff;
+    border-bottom-color: #404040;
+    border-right-color: #404040;
+    box-shadow: none;
+}
+:root[data-theme="retro"] .window-titlebar {
+    height: 24px;
+    background: linear-gradient(#000080, #000060);
+    color: #fff;
+}
+:root[data-theme="retro"] .traffic {
+    display: none;
+}
+:root[data-theme="retro"] .title {
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.3px;
+}
+:root[data-theme="retro"] .window-body {
+    background: #c0c0c0;
+    border-top: 2px solid #fff;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #404040;
+    border-right: 2px solid #404040;
+}
+:root[data-theme="retro"] .win-btn {
+    background: #c0c0c0;
+}
+
+/* Lists */
+.list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 10px;
+}
+.list li a {
+    color: var(--fg);
+    cursor: pointer;
+    font-weight: 600;
+}
+.muted {
+    color: var(--muted);
+    margin: 4px 0 0;
+}
+
+/* Terminal */
+.terminal {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+    color: #a9ffb2;
+    background: #0a0f0b;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.terminal-out {
+    flex: 1;
+    overflow: auto;
+    white-space: pre-wrap;
+    padding: 8px;
+}
+.terminal-in {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.terminal-in input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #c1ffd4;
+    font-family: inherit;
+    font-size: 14px;
+}
+.prompt {
+    color: #58ff6e;
+}
+:root[data-theme="retro"] .terminal {
+    color: #000;
+    background: #000;
+    border-radius: 0;
+    border: 2px solid #fff;
+    border-bottom-color: #404040;
+    border-right-color: #404040;
+}
+:root[data-theme="retro"] .terminal-out {
+    color: #33ff33;
+}
+:root[data-theme="retro"] .terminal-in {
+    background: #111;
+    border-top: 1px solid #222;
+}
+:root[data-theme="retro"] .prompt {
+    color: #33ff33;
+}
+
+/* Pages */
+.page {
+    padding: 24px;
+    max-width: 860px;
+    margin: 0 auto;
+}
+.desktop-icons {
+    position: absolute;
+    inset: 12px;
+    display: grid;
+    grid-auto-rows: minmax(84px, auto);
+    grid-template-columns: repeat(auto-fit, 96px);
+    align-content: start;
+    gap: 8px 12px;
+    pointer-events: none;
+}
+.desktop-icon {
+    pointer-events: auto;
+    appearance: none;
+    background: none;
+    border: none;
+    color: #fff;
+    width: 96px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 4px;
+    cursor: default;
+}
+.desktop-icon span {
+    display: inline-block;
+    text-align: center;
+    background: rgba(0, 0, 128, 0.6);
+    padding: 2px 4px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    text-shadow: 1px 1px 0 #000;
+    font-size: 12px;
+}
+.desktop-icon:focus {
+    outline: 1px dotted #fff;
+}
+
+/* Start menu */
+.start-menu {
+    position: absolute;
+    left: 8px;
+    bottom: 44px;
+    width: 260px;
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    border: 2px solid #fff;
+    border-bottom-color: #404040;
+    border-right-color: #404040;
+    background: #c0c0c0;
+    box-shadow: 0 6px 0 rgba(0, 0, 0, 0.2);
+}
+.start-menu-left {
+    background: linear-gradient(180deg, #000080, #000060);
+    color: #fff;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    text-align: center;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 8px 0;
+}
+.start-menu-right {
+    padding: 6px;
+    display: grid;
+    gap: 4px;
+}
+.start-menu-right button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    border: 2px solid #fff;
+    border-bottom-color: #404040;
+    border-right-color: #404040;
+    background: #c0c0c0;
+    cursor: pointer;
+}
+.start-menu-right hr {
+    border: none;
+    border-top: 2px solid #404040;
+    margin: 6px 0;
+}
+.start-subhead {
+    font-size: 12px;
+    color: #000;
+    margin: 4px 0;
+}
+.theme-row {
+    display: flex;
+    gap: 6px;
+}
+.page-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+}
+/* MDX prose defaults */
+.prose {
+    line-height: 1.65;
+}
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+    margin: 1.2em 0 0.5em;
+    font-weight: 800;
+}
+.prose h1 {
+    font-size: 1.75rem;
+}
+.prose h2 {
+    font-size: 1.35rem;
+}
+.prose h3 {
+    font-size: 1.15rem;
+}
+.prose p {
+    margin: 0.75em 0;
+}
+.prose a {
+    color: var(--accent);
+    text-decoration: none;
+}
+.prose a:hover {
+    text-decoration: underline;
+}
+.prose ul,
+.prose ol {
+    padding-left: 1.25em;
+    margin: 0.5em 0 0.5em;
+}
+.prose li {
+    margin: 0.25em 0;
+}
+.prose blockquote {
+    margin: 1em 0;
+    padding: 0.75em 1em;
+    background: color-mix(in hsl, var(--panel-2), white 4%);
+    border-left: 4px solid var(--accent);
+}
+.prose hr {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    margin: 1.25em 0;
+}
+.prose img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0.75em auto;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    max-height: 60vh; /* avoid exceeding window height */
+}
+.prose figure {
+    margin: 1em 0;
+}
+.prose figcaption {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 4px;
+}
+/* Code blocks and inline code */
+.prose pre {
+    background: var(--panel-2);
+    color: var(--fg);
+    padding: 12px;
+    border-radius: 8px;
+    overflow: auto;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.prose pre code {
+    display: grid;
+}
+.prose code[data-line-numbers] {
+    counter-reset: line;
+}
+.prose code[data-line-numbers] > [data-line]::before {
+    counter-increment: line;
+    content: counter(line);
+    display: inline-block;
+    width: 2ch;
+    margin-right: 12px;
+    color: var(--muted);
+}
+.prose [data-line] {
+    padding: 0 4px;
+}
+.prose [data-highlighted-line] {
+    background: color-mix(in hsl, var(--panel-2), white 8%);
+}
+.prose :not(pre) > code {
+    background: color-mix(in hsl, var(--panel-2), white 6%);
+    padding: 0.15em 0.35em;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.prose code {
+    font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
+    font-size: 0.95em;
+}
+/* Tables */
+.prose table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75em 0;
+}
+.prose th,
+.prose td {
+    text-align: left;
+    padding: 8px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.prose thead th {
+    background: color-mix(in hsl, var(--panel-2), white 4%);
+}
+
+/* Retro theme tweaks for prose */
+:root[data-theme="retro"] .prose h1 {
+    font-size: 20px;
+}
+:root[data-theme="retro"] .prose h2 {
+    font-size: 16px;
+}
+:root[data-theme="retro"] .prose h3 {
+    font-size: 14px;
+}
+:root[data-theme="retro"] .prose a {
+    color: #0000ee;
+    text-decoration: underline;
+}
+:root[data-theme="retro"] .prose img {
+    border-radius: 0;
+    border: 2px solid #fff;
+    border-bottom-color: #404040;
+    border-right-color: #404040;
+}
+:root[data-theme="retro"] .prose pre {
+    background: #ffffff;
+    color: #000;
+    border-radius: 0;
+    border: 2px solid #fff;
+    border-bottom-color: #404040;
+    border-right-color: #404040;
+}
+:root[data-theme="retro"] .prose code[data-line-numbers] > [data-line]::before {
+    color: #333;
+}
+
+/* Explorer (Win95-like) */
+.explorer {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    height: 100%;
+}
+.explorer-toolbar {
+    display: flex;
+    gap: 6px;
+    padding: 4px;
+    background: var(--panel-2);
+}
+:root[data-theme="retro"] .explorer-toolbar {
+    background: #c0c0c0;
+    border-bottom: 2px solid #404040;
+}
+.explorer-btn {
+    appearance: none;
+    border: 2px solid #fff;
+    border-bottom-color: #404040;
+    border-right-color: #404040;
+    background: #c0c0c0;
+    padding: 2px 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+.explorer-btn:active {
+    border-top-color: #404040;
+    border-left-color: #404040;
+    border-bottom-color: #fff;
+    border-right-color: #fff;
+}
+.explorer-list {
+    list-style: none;
+    padding: 6px;
+    margin: 0;
+    display: grid;
+    gap: 6px;
+    align-content: start;
+}
+.explorer-item {
+    width: 100%;
+    text-align: left;
+    display: grid;
+    grid-template-columns: 24px 1fr;
+    gap: 8px;
+    padding: 6px;
+    cursor: default;
+    background: transparent;
+    border: 2px solid transparent;
+}
+.explorer-item:hover {
+    background: rgba(0, 0, 0, 0.06);
+}
+:root[data-theme="retro"] .explorer-item:hover {
+    background: #d8d8d8;
+}
+.explorer-item:focus {
+    outline: none;
+    border: 2px dotted #000;
+}
+.explorer .meta {
+    display: grid;
+    gap: 2px;
+}
+.explorer .name {
+    font-weight: 600;
+}
+.explorer .desc {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+/* Taskbar (Win95) */
+.taskbar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 40px;
+    padding: 4px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    background: var(--panel);
+}
+:root[data-theme="retro"] .taskbar {
+    background: #c0c0c0;
+    border-top: 2px solid #fff;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #404040;
+    border-right: 2px solid #404040;
+}
+.taskbar-left {
+    display: flex;
+    align-items: center;
+}
+.taskbar-tasks {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px;
+    overflow: hidden;
+}
+:root[data-theme="retro"] .taskbar-tasks {
+    background: #c0c0c0;
+    border: 2px inset #fff;
+}
+.taskbar-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.show-desktop {
+    width: 10px;
+    height: 100%;
+    border: 2px solid #fff;
+    border-bottom-color: #404040;
+    border-right-color: #404040;
+    background: #c0c0c0;
+    cursor: pointer;
+}
+.show-desktop:active {
+    border-top-color: #404040;
+    border-left-color: #404040;
+    border-bottom-color: #fff;
+    border-right-color: #fff;
+}
+
+/* Taskbar context menu */
+.taskbar-menu {
+    position: absolute;
+    background: #c0c0c0;
+    border: 2px solid #fff;
+    border-bottom-color: #404040;
+    border-right-color: #404040;
+    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
+    z-index: 9999;
+}
+.taskbar-menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 4px;
+}
+.taskbar-menu li {
+    margin: 2px 0;
+}
+.taskbar-menu button {
+    width: 100%;
+    text-align: left;
+    padding: 4px 8px;
+    background: #c0c0c0;
+    border: 2px solid #fff;
+    border-bottom-color: #404040;
+    border-right-color: #404040;
+    cursor: pointer;
+}
+.taskbar-menu button:active {
+    border-top-color: #404040;
+    border-left-color: #404040;
+    border-bottom-color: #fff;
+    border-right-color: #fff;
+}
+.taskbar .task-btn {
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 10px;
+    cursor: pointer;
+    background: #c0c0c0;
+    border: 2px solid #fff;
+    border-bottom-color: #404040;
+    border-right-color: #404040;
+    gap: 6px;
+    min-width: 0;
+    max-width: 220px;
+}
+.taskbar .task-btn .label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+.taskbar .task-btn.pressed {
+    border-top-color: #404040;
+    border-left-color: #404040;
+    border-bottom-color: #fff;
+    border-right-color: #fff;
+}
+.taskbar .task-btn.minimized {
+    opacity: 0.9;
+}
