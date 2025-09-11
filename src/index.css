@@ -6,14 +6,6 @@
     --panel-2: #232848;
     --accent: #6ea0ff;
 }
-:root[data-theme="light"] {
-    --bg: #f6f7fb;
-    --fg: #1f1f1f;
-    --muted: #5f5f6a;
-    --panel: #ffffff;
-    --panel-2: #f1f3f9;
-    --accent: #2d6cff;
-}
 /* Retro theme (Win95-ish) */
 :root[data-theme="retro"] {
     --bg: #008080; /* teal desktop */
@@ -397,10 +389,7 @@ body {
     color: #000;
     margin: 4px 0;
 }
-.theme-row {
-    display: flex;
-    gap: 6px;
-}
+
 .page-header {
     display: flex;
     align-items: baseline;

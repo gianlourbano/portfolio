@@ -177,9 +177,7 @@ export function Terminal({ commands }: { commands: CommandMap }) {
 }
 
 function formatPrompt(cwd: string) {
-    const theme = document.documentElement.dataset.theme;
-    const base = theme === "retro" ? "C:" : "~";
-    return `${base}${cwd} >`;
+    return `C:${cwd} >`;
 }
 
 const BUILT_INS = [

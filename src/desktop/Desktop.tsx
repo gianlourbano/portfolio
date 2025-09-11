@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type React from "react";
 import { Window } from "../ui/Window";
 import { Terminal } from "../ui/Terminal";
 import {
@@ -6,7 +7,7 @@ import {
     type Meta,
     getProjectBySlug,
     getPostBySlug,
-} from "../lib/content.ts";
+} from "../lib/content";
 import { Link } from "react-router-dom";
 import { React95Icon } from "../ui/React95Icons";
 import { Button } from "react95";
@@ -17,7 +18,8 @@ import { Note } from "../ui/mdx/Note";
 import { Warning } from "../ui/mdx/Warning";
 import { Files } from "../ui/mdx/Files";
 import { AboutContent } from "../ui/AboutContent";
-import { beep } from "../ui/sound";
+
+// Retro-only: settings and sounds removed per request
 
 type Kind = "projects" | "blog" | "about" | "terminal" | "doc";
 type Bounds = { x: number; y: number; w: number; h: number };
@@ -38,42 +40,6 @@ type Win = {
 export function Desktop() {
     const { projects, posts } = useContentIndex();
     const [startOpen, setStartOpen] = useState(false);
-    const [menu, setMenu] = useState<null | { x: number; y: number }>(null);
-    const [settingsOpen, setSettingsOpen] = useState(false);
-    const [settings, setSettings] = useState<{
-        wallpaper: string;
-        tileSize: number;
-        iconSize: number;
-        sounds: boolean;
-        theme: "dark" | "light" | "retro";
-    }>(() => {
-        try {
-            const raw = localStorage.getItem("desktop:settings");
-            if (raw) {
-                const s = JSON.parse(raw);
-                // migrate old absolute wallpaper to base-aware
-                if (
-                    typeof s.wallpaper === "string" &&
-                    s.wallpaper.startsWith("/")
-                ) {
-                    const base = (import.meta as any).env?.BASE_URL || "/";
-                    s.wallpaper = `${String(base).replace(/\/$/, "")}${
-                        s.wallpaper
-                    }`;
-                }
-                return s;
-            }
-        } catch {}
-        const base = (import.meta as any).env?.BASE_URL || "/";
-        const url = `${String(base).replace(/\/$/, "")}/win95-tile.svg`;
-        return {
-            wallpaper: url,
-            tileSize: 128,
-            iconSize: 32,
-            sounds: false,
-            theme: (document.documentElement.dataset.theme as any) || "retro",
-        };
-    });
     const [wins, setWins] = useState<Win[]>(() => {
         try {
             const raw = localStorage.getItem("desktop:wins");
@@ -93,21 +59,13 @@ export function Desktop() {
         return () => document.removeEventListener("click", closeOnClickOutside);
     }, [startOpen]);
 
-    // Apply settings to DOM and persist
+    // Enforce retro theme on mount
     useEffect(() => {
         const root = document.documentElement;
-        root.style.setProperty(
-            "--wallpaper-image",
-            `url("${settings.wallpaper}")`
-        );
-        root.style.setProperty("--wallpaper-size", settings.tileSize + "px");
-        root.dataset.theme = settings.theme;
-        try {
-            localStorage.setItem("desktop:settings", JSON.stringify(settings));
-        } catch {}
-    }, [settings]);
+        root.dataset.theme = "retro";
+    }, []);
 
-    // Restore counters from existing state
+    // Restore counters and active window from localStorage on mount
     useEffect(() => {
         if (wins.length) {
             zCounter.current = Math.max(
@@ -124,6 +82,7 @@ export function Desktop() {
             const a = localStorage.getItem("desktop:active");
             if (a) setActiveId(a);
         } catch {}
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Persist windows and active window id
@@ -258,8 +217,6 @@ export function Desktop() {
         setShowDesktop((v) => !v);
     };
 
-    // Removed cascade/tile helpers per request
-
     useHotkeys({
         onBacktick: () => openAndActivate("terminal"),
         onEscape: () => undefined,
@@ -270,28 +227,19 @@ export function Desktop() {
             <Wallpaper />
             <DesktopIcons
                 onOpen={(name) => {
-                    if (settings.sounds) beep({ freq: 600, duration: 0.05 });
                     openAndActivate(name.toLowerCase() as Kind);
                 }}
-                iconSize={settings.iconSize}
             />
             <div
                 className="taskbar"
                 onClick={() => {
                     setStartOpen(false);
-                    setMenu(null);
-                }}
-                onContextMenu={(e) => {
-                    e.preventDefault();
-                    setMenu({ x: e.clientX, y: e.clientY });
                 }}
             >
                 <div className="taskbar-left">
                     <StartButton
                         onClick={(e) => {
                             e.stopPropagation();
-                            if (settings.sounds)
-                                beep({ freq: 660, duration: 0.05 });
                             setStartOpen((v) => !v);
                         }}
                     />
@@ -305,8 +253,6 @@ export function Desktop() {
                             active={activeId === w.id && !w.minimized}
                             minimized={w.minimized}
                             onClick={() => {
-                                if (settings.sounds)
-                                    beep({ freq: 520, duration: 0.04 });
                                 toggleTask(w.id);
                             }}
                         />
@@ -318,199 +264,19 @@ export function Desktop() {
                         title="Show Desktop"
                         onClick={(e) => {
                             e.stopPropagation();
-                            if (settings.sounds)
-                                beep({ freq: 480, duration: 0.04 });
                             doShowDesktop();
                         }}
                     />
                     <Clock />
                 </div>
             </div>
-            {menu && (
-                <div
-                    className="taskbar-menu"
-                    style={{ left: menu.x, top: menu.y }}
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <ul>
-                        <li>
-                            <button
-                                onClick={() => {
-                                    if (settings.sounds)
-                                        beep({ freq: 760, duration: 0.05 });
-                                    setSettingsOpen(true);
-                                    setMenu(null);
-                                }}
-                            >
-                                Settings…
-                            </button>
-                        </li>
-                    </ul>
-                </div>
-            )}
             {startOpen && (
                 <StartMenu
                     onOpen={(name: Kind) => {
-                        if (settings.sounds)
-                            beep({ freq: 600, duration: 0.05 });
                         openAndActivate(name);
-                    }}
-                    onTheme={(t: "dark" | "light" | "retro") => {
-                        if (settings.sounds)
-                            beep({ freq: 700, duration: 0.04 });
-                        setSettings((s) => ({ ...s, theme: t }));
-                        setStartOpen(false);
-                    }}
-                    onOpenSettings={() => {
-                        if (settings.sounds)
-                            beep({ freq: 760, duration: 0.05 });
-                        setSettingsOpen(true);
-                        setStartOpen(false);
                     }}
                     onClose={() => setStartOpen(false)}
                 />
-            )}
-            {settingsOpen && (
-                <Window
-                    key="settings"
-                    title="Settings"
-                    iconName="About"
-                    initial={{ x: 220, y: 160, w: 420, h: 320 }}
-                    onClose={() => setSettingsOpen(false)}
-                    onActivate={() => undefined}
-                    zIndex={9999}
-                    isMaximized={false}
-                >
-                    <div className="prose">
-                        <h3>Appearance</h3>
-                        <div style={{ display: "grid", gap: 8 }}>
-                            <label>
-                                Wallpaper URL
-                                <input
-                                    type="text"
-                                    defaultValue={settings.wallpaper}
-                                    onBlur={(e) =>
-                                        setSettings((s) => ({
-                                            ...s,
-                                            wallpaper:
-                                                e.currentTarget.value ||
-                                                `${String(
-                                                    (import.meta as any).env
-                                                        ?.BASE_URL || "/"
-                                                ).replace(
-                                                    /\/$/,
-                                                    ""
-                                                )}/win95-tile.svg`,
-                                        }))
-                                    }
-                                    style={{ width: "100%" }}
-                                />
-                            </label>
-                            <label>
-                                Tile Size (px)
-                                <input
-                                    type="number"
-                                    min={32}
-                                    max={256}
-                                    defaultValue={settings.tileSize}
-                                    onBlur={(e) =>
-                                        setSettings((s) => ({
-                                            ...s,
-                                            tileSize: Math.max(
-                                                32,
-                                                Math.min(
-                                                    256,
-                                                    Number(
-                                                        e.currentTarget.value ||
-                                                            128
-                                                    )
-                                                )
-                                            ),
-                                        }))
-                                    }
-                                />
-                            </label>
-                            <label>
-                                Icon Size (px)
-                                <input
-                                    type="number"
-                                    min={24}
-                                    max={64}
-                                    defaultValue={settings.iconSize}
-                                    onBlur={(e) =>
-                                        setSettings((s) => ({
-                                            ...s,
-                                            iconSize: Math.max(
-                                                24,
-                                                Math.min(
-                                                    64,
-                                                    Number(
-                                                        e.currentTarget.value ||
-                                                            32
-                                                    )
-                                                )
-                                            ),
-                                        }))
-                                    }
-                                />
-                            </label>
-                            <label
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 8,
-                                }}
-                            >
-                                <input
-                                    type="checkbox"
-                                    defaultChecked={settings.sounds}
-                                    onChange={(e) =>
-                                        setSettings((s) => ({
-                                            ...s,
-                                            sounds: e.currentTarget.checked,
-                                        }))
-                                    }
-                                />{" "}
-                                Enable sounds
-                            </label>
-                            <div style={{ display: "flex", gap: 6 }}>
-                                <button
-                                    className="explorer-btn"
-                                    onClick={() =>
-                                        setSettings((s) => ({
-                                            ...s,
-                                            theme: "retro",
-                                        }))
-                                    }
-                                >
-                                    Retro
-                                </button>
-                                <button
-                                    className="explorer-btn"
-                                    onClick={() =>
-                                        setSettings((s) => ({
-                                            ...s,
-                                            theme: "light",
-                                        }))
-                                    }
-                                >
-                                    Light
-                                </button>
-                                <button
-                                    className="explorer-btn"
-                                    onClick={() =>
-                                        setSettings((s) => ({
-                                            ...s,
-                                            theme: "dark",
-                                        }))
-                                    }
-                                >
-                                    Dark
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </Window>
             )}
             {wins
                 .filter((w) => !w.minimized)
@@ -595,7 +361,6 @@ export function Desktop() {
                                             "  projects             List projects",
                                             "  blog                 List blog posts",
                                             "  open <type> <slug>   Open a project/post (type=project|post)",
-                                            "  theme [dark|light|retro]   Toggle/set theme",
                                             "  clear                Clear the terminal",
                                         ].join("\n"),
                                     projects: () =>
@@ -624,20 +389,6 @@ export function Desktop() {
                                             return `Opening post: ${slug}`;
                                         }
                                         return "Type must be 'project' or 'post'.";
-                                    },
-                                    theme: ([arg]) => {
-                                        const root = document.documentElement;
-                                        if (!arg)
-                                            return `Theme: ${
-                                                root.dataset.theme || "dark"
-                                            }`;
-                                        root.dataset.theme =
-                                            arg === "light"
-                                                ? "light"
-                                                : arg === "retro"
-                                                ? "retro"
-                                                : "dark";
-                                        return `Theme set to ${root.dataset.theme}`;
                                     },
                                     clear: () => "__CLEAR__",
                                 }}
@@ -885,7 +636,7 @@ function useHotkeys(handlers: {
     onBacktick: () => void;
     onEscape: () => void;
 }) {
-    useState(() => {
+    useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
             if (e.key === "`") {
                 handlers.onBacktick();
@@ -895,7 +646,7 @@ function useHotkeys(handlers: {
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
-    });
+    }, [handlers]);
 }
 
 function DesktopIcons({
@@ -1016,13 +767,9 @@ function Clock() {
 
 function StartMenu({
     onOpen,
-    onTheme,
-    onOpenSettings,
     onClose,
 }: {
     onOpen: (name: "projects" | "blog" | "about" | "terminal") => void;
-    onTheme: (t: "dark" | "light" | "retro") => void;
-    onOpenSettings: () => void;
     onClose: () => void;
 }) {
     return (
@@ -1060,19 +807,6 @@ function StartMenu({
                     }}
                 >
                     <React95Icon name="Terminal" size={20} /> Terminal
-                </button>
-                <hr />
-                <div className="start-subhead">Settings</div>
-                <div className="theme-row">
-                    <button onClick={() => onTheme("dark")}>Dark</button>
-                    <button onClick={() => onTheme("light")}>Light</button>
-                    <button onClick={() => onTheme("retro")}>Retro</button>
-                </div>
-                <button
-                    onClick={() => onOpenSettings()}
-                    style={{ marginTop: 6 }}
-                >
-                    <React95Icon name="About" size={20} /> Settings…
                 </button>
             </div>
         </div>
