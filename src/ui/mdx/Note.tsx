@@ -1,4 +1,4 @@
-export function Note({ children }: { children: React.ReactNode }) {
+export function Note({ children, title }: { children: React.ReactNode, title?: string }) {
     return (
         <div
             style={{
@@ -8,7 +8,7 @@ export function Note({ children }: { children: React.ReactNode }) {
                 margin: "8px 0",
             }}
         >
-            <strong style={{ display: "block", marginBottom: 4 }}>Note</strong>
+            <strong style={{ display: "block", marginBottom: 4 }}>{title || "Note"}</strong>
             <div>{children}</div>
         </div>
     );

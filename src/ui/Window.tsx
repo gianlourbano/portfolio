@@ -47,7 +47,7 @@ export function Window({
     const clamp = (val: number, min: number, max: number) =>
         Math.max(min, Math.min(max, val));
 
-    const onMouseDown: React.MouseEventHandler = (e) => {
+    const onPointerDownTitlebar: React.PointerEventHandler = (e) => {
         // Ignore drags that start on the window controls area
         if ((e.target as HTMLElement)?.closest(".win-controls")) return;
         onActivate?.();
@@ -56,6 +56,11 @@ export function Window({
             ".window"
         ) as HTMLElement | null;
         if (!winEl) return;
+        e.preventDefault();
+        // capture pointer so move events continue if pointer leaves element
+        try {
+            (winEl as any).setPointerCapture?.(e.pointerId);
+        } catch {}
         const rect = winEl.getBoundingClientRect();
         dragOffset.current = {
             x: e.clientX - rect.left,
@@ -64,10 +69,10 @@ export function Window({
         // new drag session
         lastDragPos.current = null;
         didResizeRef.current = false;
-        window.addEventListener("mousemove", onMouseMove);
-        window.addEventListener("mouseup", onMouseUp);
+        window.addEventListener("pointermove", onPointerMove);
+        window.addEventListener("pointerup", onPointerUp);
     };
-    const onMouseMove = (e: MouseEvent) => {
+    const onPointerMove = (e: PointerEvent) => {
         const vw = window.innerWidth;
         const vh = window.innerHeight;
         if (resizing.current && !isMaximized) {
@@ -116,11 +121,11 @@ export function Window({
             lastDragPos.current = { x, y };
         }
     };
-    const onMouseUp = () => {
+    const onPointerUp = () => {
         dragOffset.current = null;
         resizing.current = null;
-        window.removeEventListener("mousemove", onMouseMove);
-        window.removeEventListener("mouseup", onMouseUp);
+        window.removeEventListener("pointermove", onPointerMove);
+        window.removeEventListener("pointerup", onPointerUp);
         const vw = window.innerWidth;
         const vh = window.innerHeight;
         const finalX = lastDragPos.current ? lastDragPos.current.x : pos.x;
@@ -157,15 +162,15 @@ export function Window({
         onBoundsChange?.(clamped);
     };
 
-    const onResizeMouseDown: React.MouseEventHandler = (e) => {
+    const onResizePointerDown: React.PointerEventHandler = (e) => {
         onActivate?.();
         e.preventDefault();
         resizing.current = { x: e.clientX, y: e.clientY };
         // establish baseline for resize from current size
         lastResize.current = { w: size.w, h: size.h };
         didResizeRef.current = false;
-        window.addEventListener("mousemove", onMouseMove);
-        window.addEventListener("mouseup", onMouseUp);
+        window.addEventListener("pointermove", onPointerMove);
+        window.addEventListener("pointerup", onPointerUp);
         e.stopPropagation();
     };
 
@@ -173,7 +178,7 @@ export function Window({
         <div
             className="window"
             ref={winRef}
-            onMouseDownCapture={() => onActivate?.()}
+            onPointerDownCapture={() => onActivate?.()}
             style={{
                 transform: isMaximized
                     ? `translate(0px, 0px)`
@@ -183,7 +188,10 @@ export function Window({
                 zIndex,
             }}
         >
-            <div className="window-titlebar" onMouseDown={onMouseDown}>
+            <div
+                className="window-titlebar"
+                onPointerDown={onPointerDownTitlebar}
+            >
                 <div
                     className="title"
                     style={{ display: "flex", alignItems: "center", gap: 8 }}
@@ -231,7 +239,7 @@ export function Window({
             {!isMaximized && (
                 <div
                     className="resize-handle"
-                    onMouseDown={onResizeMouseDown}
+                    onPointerDown={onResizePointerDown}
                 />
             )}
         </div>

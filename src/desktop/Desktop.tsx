@@ -8,7 +8,6 @@ import {
     getProjectBySlug,
     getPostBySlug,
 } from "../lib/content";
-import { Link } from "react-router-dom";
 import { React95Icon } from "../ui/React95Icons";
 import { Button } from "react95";
 import { MDXProvider } from "@mdx-js/react";
@@ -18,6 +17,9 @@ import { Note } from "../ui/mdx/Note";
 import { Warning } from "../ui/mdx/Warning";
 import { Files } from "../ui/mdx/Files";
 import { AboutContent } from "../ui/AboutContent";
+import { Tabs, Tab } from "../ui/mdx/Tabs";
+import { Details } from "../ui/mdx/Details";
+import { Kbd, Badge, Stat } from "../ui/mdx/Inline";
 
 // Retro-only: settings and sounds removed per request
 
@@ -52,6 +54,7 @@ export function Desktop() {
     const idCounter = useRef(0);
     const lastUnminimized = useRef<string[]>([]);
     const [showDesktop, setShowDesktop] = useState(false);
+    const TASKBAR_H = 40;
 
     useEffect(() => {
         const closeOnClickOutside = () => setStartOpen(false);
@@ -128,25 +131,43 @@ export function Desktop() {
         },
     };
 
+    const computeInitialBounds = (
+        base: { x: number; y: number; w?: number; h?: number },
+        offset: number
+    ): { bounds: Bounds; maximize: boolean } => {
+        const vw = typeof window !== "undefined" ? window.innerWidth : 1024;
+        const vh = typeof window !== "undefined" ? window.innerHeight : 768;
+        const minW = 260;
+        const minH = 160;
+        const desiredW = Math.max(minW, base.w ?? 480);
+        const desiredH = Math.max(minH, base.h ?? 300);
+        const usableH = Math.max(0, vh - TASKBAR_H);
+        const maximize = desiredW > vw || desiredH > usableH;
+        const w = Math.min(desiredW, vw);
+        const h = Math.min(desiredH, usableH);
+        const x = Math.max(0, Math.min(base.x + offset, Math.max(0, vw - w)));
+        const y = Math.max(
+            0,
+            Math.min(base.y + offset, Math.max(0, usableH - h))
+        );
+        return { bounds: { x, y, w, h }, maximize };
+    };
+
     const createWin = (kind: Kind): Win => {
         const meta = kindMeta[kind];
         const idx = wins.filter((w) => w.kind === kind).length;
         const id = `${kind}-${++idCounter.current}`;
         const offset = 24 * idx;
+        const { bounds, maximize } = computeInitialBounds(meta.base, offset);
         return {
             id,
             kind,
             title: meta.title,
             icon: meta.icon,
             minimized: false,
-            maximized: false,
+            maximized: maximize,
             z: ++zCounter.current,
-            bounds: {
-                x: meta.base.x + offset,
-                y: meta.base.y + offset,
-                w: meta.base.w ?? 480,
-                h: meta.base.h ?? 300,
-            },
+            bounds,
         };
     };
 
@@ -162,15 +183,17 @@ export function Desktop() {
                 ? projects.find((p) => p.slug === slug)
                 : posts.find((p) => p.slug === slug);
         const title = meta?.title || slug;
+        const base = { x: 160, y: 120, w: 640, h: 420 };
+        const { bounds, maximize } = computeInitialBounds(base, 24);
         const doc: Win = {
             id: `doc-${++idCounter.current}`,
             kind: "doc",
             title,
             icon: "Doc",
             minimized: false,
-            maximized: false,
+            maximized: maximize,
             z: ++zCounter.current,
-            bounds: { x: 180, y: 140, w: 680, h: 480 },
+            bounds,
             payload: { type, slug },
         };
         setWins((prev) => [...prev, doc]);
@@ -346,9 +369,6 @@ export function Desktop() {
                         {w.kind === "about" && (
                             <div>
                                 <AboutContent />
-                                <p style={{ marginTop: 8 }}>
-                                    <Link to="/about">full page →</Link>
-                                </p>
                             </div>
                         )}
                         {w.kind === "terminal" && (
@@ -614,8 +634,21 @@ function DocView({
         return <div className="prose">Not found or invalid document.</div>;
     const Component = mod.default as React.ComponentType<any>;
     try {
+        const mdxComponents = {
+            Callout,
+            Figure,
+            Note,
+            Warning,
+            Files,
+            Tabs,
+            Tab,
+            Details,
+            Kbd,
+            Badge,
+            Stat,
+        } as const;
         return (
-            <MDXProvider components={{ Callout, Figure, Note, Warning, Files }}>
+            <MDXProvider components={mdxComponents}>
                 <div className="prose">
                     <Component />
                 </div>
@@ -713,6 +746,15 @@ function TaskItem({
     active?: boolean;
     minimized?: boolean;
 }) {
+    const maxChars = (() => {
+        if (typeof window === "undefined") return 24;
+        const w = window.innerWidth;
+        if (w < 420) return 12;
+        if (w < 720) return 16;
+        if (w < 1024) return 20;
+        return 26;
+    })();
+    const short = middleEllipsis(label, maxChars);
     return (
         <button
             className={`task-btn ${active ? "pressed" : ""} ${
@@ -725,10 +767,19 @@ function TaskItem({
                 style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
             >
                 <React95Icon name={icon} size={20} />{" "}
-                <span className="label">{label}</span>
+                <span className="label">{short}</span>
             </span>
         </button>
     );
+}
+
+function middleEllipsis(text: string, max: number) {
+    if (!text) return text;
+    if (text.length <= max) return text;
+    if (max <= 1) return "…";
+    const left = Math.ceil((max - 1) / 2);
+    const right = Math.floor((max - 1) / 2);
+    return text.slice(0, left) + "…" + text.slice(text.length - right);
 }
 
 function Clock() {
@@ -774,7 +825,6 @@ function StartMenu({
 }) {
     return (
         <div className="start-menu" onClick={(e) => e.stopPropagation()}>
-            <div className="start-menu-left">Windows</div>
             <div className="start-menu-right">
                 <button
                     onClick={() => {

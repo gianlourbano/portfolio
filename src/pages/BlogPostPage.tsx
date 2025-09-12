@@ -6,6 +6,9 @@ import { Figure } from "../ui/mdx/Figure";
 import { Note } from "../ui/mdx/Note";
 import { Warning } from "../ui/mdx/Warning";
 import { Files } from "../ui/mdx/Files";
+import { Tabs, Tab } from "../ui/mdx/Tabs";
+import { Details } from "../ui/mdx/Details";
+import { Kbd, Badge, Stat } from "../ui/mdx/Inline";
 
 export function BlogPostPage() {
     const { slug } = useParams();
@@ -25,7 +28,21 @@ export function BlogPostPage() {
                 <h1>{mod.meta.title}</h1>
                 {mod.meta.date && <time>{mod.meta.date}</time>}
             </header>
-            <MDXProvider components={{ Callout, Figure, Note, Warning, Files }}>
+            <MDXProvider
+                components={{
+                    Callout,
+                    Figure,
+                    Note,
+                    Warning,
+                    Files,
+                    Tabs,
+                    Tab,
+                    Details,
+                    Kbd,
+                    Badge,
+                    Stat,
+                }}
+            >
                 <article className="prose">
                     <Component />
                 </article>

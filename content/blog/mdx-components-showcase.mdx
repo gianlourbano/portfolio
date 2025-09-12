@@ -1,0 +1,78 @@
+export const meta = {
+    title: "MDX Components Showcase",
+    slug: "mdx-components-showcase",
+    date: "2025-09-12",
+    tags: ["mdx", "shortcodes", "retro-ui"],
+    summary:
+        "A quick tour of the custom MDX components: Callout, Files, Figure, Note, Warning, Tabs, Details, Kbd, Badge, Stat.",
+};
+
+import { Callout } from "../../src/ui/mdx/Callout";
+import { Note } from "../../src/ui/mdx/Note";
+import { Warning } from "../../src/ui/mdx/Warning";
+import { Files } from "../../src/ui/mdx/Files";
+import { Figure } from "../../src/ui/mdx/Figure";
+import { Tabs, Tab } from "../../src/ui/mdx/Tabs";
+import { Details } from "../../src/ui/mdx/Details";
+import { Kbd, Badge, Stat } from "../../src/ui/mdx/Inline";
+
+# MDX Components Showcase <Badge tone="info">new</Badge>
+
+This page demonstrates all shortcodes available inside posts and projects.
+
+<Callout>
+    All components are pre-registered in the MDXProvider used by the desktop Doc
+    viewer.
+</Callout>
+
+## Inline helpers
+
+-   Press <Kbd>Ctrl</Kbd> + <Kbd>C</Kbd> to cancel.
+-   Status: <Badge tone="success">Stable</Badge>, <Badge tone="warn">Experimental</Badge>, <Badge tone="error">Breaking</Badge>
+-   Throughput: <Stat label="tok/s" value="3.2k" />
+
+## Tabs for multi-variant code
+
+<Tabs defaultId="py">
+  <Tab id="py" label="Python">
+
+```python
+import numpy as np
+print("hello mdx")
+```
+
+  </Tab>
+  <Tab id="ts" label="TypeScript">
+
+```ts
+export const hello = (name: string) => `hi ${name}`;
+```
+
+  </Tab>
+</Tabs>
+
+## Details sections
+
+<Details summary="Why a retro UI?" open>
+    Because it's fun, recognizable, and surprisingly usable for a portfolio.
+</Details>
+
+## Figures and Files
+
+<Figure src="/portfolio/og-image.svg" caption="OpenGraph preview art" />
+
+<Files
+    items={[
+        { name: "README.md", size: "2 KB" },
+        { name: "vite.config.ts", size: "1 KB" },
+        { name: "src/ui/Terminal.tsx", size: "5 KB" },
+    ]}
+/>
+
+## Notes & Warnings
+
+<Note>Remember to use HashRouter for GH Pages deployments.</Note>
+
+<Warning>
+    Do not check secrets into your repo. Public site = public secrets.
+</Warning>

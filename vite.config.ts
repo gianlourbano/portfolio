@@ -16,11 +16,10 @@ export default defineConfig({
                 [
                     rehypePrettyCode,
                     {
-                        theme: {
-                            dark: "vitesse-dark",
-                            light: "vitesse-light",
-                        },
-                        keepBackground: false,
+                        // Dark, high-contrast theme that pairs better with retro UI
+                        theme: "monokai",
+                        // Allow theme background to render for better contrast
+                        keepBackground: true,
                     },
                 ],
             ],
