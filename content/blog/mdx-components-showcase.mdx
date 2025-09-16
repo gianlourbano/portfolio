@@ -4,7 +4,7 @@ export const meta = {
     date: "2025-09-12",
     tags: ["mdx", "shortcodes", "retro-ui"],
     summary:
-        "A quick tour of the custom MDX components: Callout, Files, Figure, Note, Warning, Tabs, Details, Kbd, Badge, Stat.",
+        "A guided tour of the custom MDX components (Callout, Note, Warning, Figure, Files, Tabs, Details, Kbd, Badge, Stat, TwoColumn, Math).",
 };
 
 import { Callout } from "../../src/ui/mdx/Callout";
@@ -15,23 +15,28 @@ import { Figure } from "../../src/ui/mdx/Figure";
 import { Tabs, Tab } from "../../src/ui/mdx/Tabs";
 import { Details } from "../../src/ui/mdx/Details";
 import { Kbd, Badge, Stat } from "../../src/ui/mdx/Inline";
+import { TwoColumn } from "../../src/ui/mdx/TwoColumn";
 
-# MDX Components Showcase <Badge tone="info">new</Badge>
+# MDX Components Showcase <Badge tone="info">tour</Badge>
 
-This page demonstrates all shortcodes available inside posts and projects.
+Instead of skimming a grid of isolated snippets, this page walks through the components in the order you might naturally reach for them while writing a technical post: inline accents, structural callouts, code variants, disclosure blocks, media & file lists, two‑column layouts, and finally math.
 
-<Callout>
-    All components are pre-registered in the MDXProvider used by the desktop Doc
-    viewer.
+<Callout type="info">
+    Everything shown here is auto‑registered. Drop these tags directly into any
+    post or project MDX file—no manual imports required there.
 </Callout>
 
-## Inline helpers
+## 1. Inline Accents
 
--   Press <Kbd>Ctrl</Kbd> + <Kbd>C</Kbd> to cancel.
--   Status: <Badge tone="success">Stable</Badge>, <Badge tone="warn">Experimental</Badge>, <Badge tone="error">Breaking</Badge>
--   Throughput: <Stat label="tok/s" value="3.2k" />
+Use `<Kbd>` for key sequences like <Kbd>Ctrl</Kbd> + <Kbd>C</Kbd>. Badges highlight status—<Badge tone="success">Stable</Badge>, <Badge tone="warn">Experimental</Badge>, or <Badge tone="error">Breaking</Badge>. Quick inline metrics fit `<Stat>`: current throughput <Stat label="tok/s" value="3.2k" /> fits neatly in running text without disrupting the flow.
 
-## Tabs for multi-variant code
+## 2. Notes, Warnings & Context
+
+Short guidance fits inside a gentle `<Note>`: <Note>Use HashRouter for GitHub Pages so deep links work after refresh.</Note> Urgent friction or risk gets a `<Warning>`: <Warning>Never embed secrets; public repo means public content.</Warning> For more emphatic structured info (like success, error, info, warn) swap to `<Callout type="warn">` etc. These boxes create visual rhythm, breaking dense explanations into scannable chunks.
+
+## 3. Code Variants with Tabs
+
+When you want to show the same concept in multiple languages, wrap each variant in a `<Tab>` inside `<Tabs>`. Readers switch context without scrolling past duplicated prose.
 
 <Tabs defaultId="py">
   <Tab id="py" label="Python">
@@ -51,15 +56,22 @@ export const hello = (name: string) => `hi ${name}`;
   </Tab>
 </Tabs>
 
-## Details sections
+## 4. Collapsible Details
+
+Dense rationale or citations can hide behind a disclosure so casual readers glide past, while the curious can expand:
 
 <Details summary="Why a retro UI?" open>
-    Because it's fun, recognizable, and surprisingly usable for a portfolio.
+    Because it's playful, surprisingly legible, and instantly recognizable—novel
+    enough to be memorable but simple enough not to fight your content.
 </Details>
 
-## Figures and Files
+## 5. Media & File Listings
+
+Figures center images with captions, keeping width constrained:
 
 <Figure src="/portfolio/og-image.svg" caption="OpenGraph preview art" />
+
+When you need to surface a tiny directory snapshot, use `<Files>`:
 
 <Files
     items={[
@@ -69,10 +81,66 @@ export const hello = (name: string) => `hi ${name}`;
     ]}
 />
 
-## Notes & Warnings
+## 6. Two‑Column Narrative Layouts
 
-<Note>Remember to use HashRouter for GH Pages deployments.</Note>
+Long form explanations often benefit from a main narrative next to a supporting artifact (diagram, code, metric panel). The `TwoColumn` component lets you specify proportional width and automatic stacking below a breakpoint.
 
-<Warning>
-    Do not check secrets into your repo. Public site = public secrets.
-</Warning>
+<TwoColumn ratio="3:2" gap={20} collapseAt={680}>
+    <TwoColumn.Left>
+        The wider left side can carry the explanatory text. You can still
+        sprinkle inline helpers like a <Badge tone="success">badge</Badge> or{" "}
+        <Kbd>Esc</Kbd>. If you prefer a leaner layout, adjust the ratio (e.g.
+        `2:1` or `1:1`).
+    </TwoColumn.Left>
+    <TwoColumn.Right>
+        <Figure
+            src="/portfolio/og-image.svg"
+            caption="Nested Figure inside right column"
+        />
+    </TwoColumn.Right>
+</TwoColumn>
+
+You can also juxtapose code and commentary:
+
+<TwoColumn ratio="1:1" gap={12}>
+  <TwoColumn.Left>
+
+```ts
+// Adjacent code sample
+export function add(a: number, b: number) {
+    return a + b;
+}
+```
+
+  </TwoColumn.Left>
+  <TwoColumn.Right>
+  <Callout type="info">Below the defined breakpoint the columns stack vertically— tweak using the <Kbd>collapseAt</Kbd> prop.</Callout>
+  </TwoColumn.Right>
+</TwoColumn>
+
+## 7. Math & LaTeX
+
+Inline math like $E = mc^2$ or $\nabla_x \mathcal{L}$ flows naturally in a sentence. For larger expressions, use a display block:
+
+$$
+\mathcal{L}(W) = - \sum_{i=1}^N \sum_{c=1}^C y_{ic} \log p_{ic} + \lambda \lVert W \rVert_2^2
+$$
+
+Or derive a gradient:
+
+$$
+\frac{\partial}{\partial W} (WX - Y)^2 = 2 (WX - Y) X^T
+$$
+
+## 8. Putting It Together
+
+Compose these primitives freely: a `TwoColumn` containing a tabbed code block and a figure; a `Details` block inside a `Callout` for optional deep dives; math inline with `Badge`s to flag complexity. The goal is to stay in MDX—no ad‑hoc CSS—while keeping a consistent retro aesthetic.
+
+<Callout type="success">
+    If you think of a pattern you keep repeating with raw HTML or awkward
+    nesting, it probably wants to graduate into one of these primitives.
+</Callout>
+
+---
+
+That’s the tour. Open the source for this page if you want quick copy/paste starters, then adapt as needed.

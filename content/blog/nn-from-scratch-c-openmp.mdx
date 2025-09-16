@@ -1,0 +1,415 @@
+export const meta = {
+    title: "Neural Network From Scratch in C with OpenMP",
+    slug: "nn-from-scratch-c-openmp",
+    date: "2025-09-16",
+    tags: ["c", "openmp", "neural-network", "from-scratch", "performance"],
+    summary:
+        "Implementing a tiny fully-connected neural network in C with parallelized training using OpenMP (forward, backward, SGD).",
+};
+
+import { Callout } from "../../src/ui/mdx/Callout";
+import { Note } from "../../src/ui/mdx/Note";
+import { Warning } from "../../src/ui/mdx/Warning";
+import { Figure } from "../../src/ui/mdx/Figure";
+import { Tabs, Tab } from "../../src/ui/mdx/Tabs";
+import { Details } from "../../src/ui/mdx/Details";
+import { Kbd, Badge, Stat } from "../../src/ui/mdx/Inline";
+import { TwoColumn } from "../../src/ui/mdx/TwoColumn";
+
+# Neural Network From Scratch in C with OpenMP <Badge tone="info">hands-on</Badge>
+
+We will build a compact multilayer perceptron (MLP) entirely in C, then thread the hot loops with OpenMP. Doing this once cements how memory layout, cache lines, and loop structure drive performance.
+
+OpenMP (Open Multi-Processing) is a lightweight shared‑memory parallel API: you add `#pragma omp` directives above loops; the compiler partitions iterations across a thread team. We use two constructs: `#pragma omp parallel for` to split a single loop, and `collapse(2)` to flatten a perfectly nested pair (e.g. neuron × batch) so the product space distributes across threads. Because each iteration writes a unique cell (e.g. `z[r*B + b]`), we need neither locks nor atomics.
+
+Feature roadmap:
+
+1. Model & layer structs
+2. He initialization
+3. Forward (ReLU + softmax)
+4. Cross-entropy loss
+5. Backprop gradients
+6. SGD + L2
+7. Timing & scaling notes
+
+<Callout type="success">
+    All code is self‑contained: copy, compile with <Kbd>gcc</Kbd> or{" "}
+    <Kbd>clang</Kbd>, and iterate.
+</Callout>
+
+## 1. Architecture Overview
+
+<TwoColumn ratio="3:2" gap={20}>
+  <TwoColumn.Left>
+
+We'll implement an MLP of the form:
+
+$$ f(x) = W_L \sigma( W_{L-1} \sigma( \dots \sigma(W_1 x + b_1) \dots ) + b_{L-1}) + b_L $$
+
+Where: - Hidden activation: ReLU \(\sigma(z) = \max(0, z)\) - Output activation: softmax producing class probabilities - Loss: cross-entropy
+
+Memory layout will be row-major flat arrays for weights and biases per layer:
+
+<Note>
+layer i: W_i has shape (out_dim, in_dim) stored contiguous row-wise
+</Note>
+
+This allows cache-friendly traversal during forward and backward passes.
+
+  </TwoColumn.Left>
+  <TwoColumn.Right>
+
+<Figure
+    src="/portfolio/nn-mlp.png"
+    caption="Diagram of 3-layer MLP (Input → Hidden1 → Hidden2 → Output)."
+/>
+
+  </TwoColumn.Right>
+</TwoColumn>
+
+## 2. Data Representation
+
+We'll assume classification with inputs of dimension `INPUT_DIM` and `NUM_CLASSES` outputs. For demonstration we'll synthesize a toy dataset (e.g. concentric rings or a simple XOR-like pattern).
+
+<Details summary="Why row-major weight storage?">
+    Row-major `(out, in)` storage keeps the inner loop over `in` contiguous for
+    dot products and makes it natural to parallelize over `out` neurons if
+    desired.
+</Details>
+
+## 3. Core Header (nn.h)
+
+```c
+#ifndef NN_H
+#define NN_H
+#include <stddef.h>
+
+typedef struct {
+    int in_dim;
+    int out_dim;
+    float *W;   // (out_dim * in_dim)
+    float *b;   // (out_dim)
+    float *z;   // pre-activation (out_dim * batch)
+    float *a;   // activation/output (out_dim * batch)
+    float *dW;  // gradient same shape as W
+    float *db;  // gradient same shape as b
+    float *dz;  // gradient wrt z
+} Layer;
+
+typedef struct {
+    int L;            // number of layers
+    int *dims;        // dims[0]..dims[L]
+    Layer *layers;    // array length L
+    int batch_size;
+} MLP;
+
+MLP *mlp_create(int L, const int *dims, int batch_size);
+void mlp_free(MLP *m);
+void mlp_forward(MLP *m, const float *x);            // x: dims[0] * batch
+float mlp_loss_softmax_ce(MLP *m, const int *targets); // targets: batch (class index)
+void mlp_backward(MLP *m, const float *x, const int *targets);
+void mlp_sgd_step(MLP *m, float lr, float l2_lambda);
+#endif
+```
+
+## 4. Initialization (nn_init.c)
+
+```c
+#include "nn.h"
+#include <stdlib.h>
+#include <math.h>
+#include <stdio.h>
+
+static float frand() { return (float)rand() / (float)RAND_MAX; }
+static float he(int fan_in) { return sqrtf(2.0f / fan_in); }
+
+MLP *mlp_create(int L, const int *dims, int batch_size) {
+    MLP *m = (MLP*)calloc(1, sizeof(MLP));
+    m->L = L - 1; // number of parameterized layers
+    m->batch_size = batch_size;
+    m->dims = (int*)malloc(sizeof(int)*L);
+    for(int i=0;i<L;i++) m->dims[i] = dims[i];
+    m->layers = (Layer*)calloc(m->L, sizeof(Layer));
+    for(int i=0;i<m->L;i++) {
+        Layer *ly = &m->layers[i];
+        ly->in_dim = dims[i];
+        ly->out_dim = dims[i+1];
+        int in = ly->in_dim, out = ly->out_dim, B = batch_size;
+        ly->W = (float*)malloc(sizeof(float)*out*in);
+        ly->b = (float*)calloc(out, sizeof(float));
+        ly->z = (float*)malloc(sizeof(float)*out*B);
+        ly->a = (float*)malloc(sizeof(float)*out*B);
+        ly->dW = (float*)calloc(out*in, sizeof(float));
+        ly->db = (float*)calloc(out, sizeof(float));
+        ly->dz = (float*)calloc(out*B, sizeof(float));
+        float scale = he(in);
+        for(int r=0;r<out;r++) {
+            for(int c=0;c<in;c++) {
+                ly->W[r*in + c] = (frand()*2.f - 1.f) * scale;
+            }
+        }
+    }
+    return m;
+}
+
+void mlp_free(MLP *m) {
+    if(!m) return;
+    for(int i=0;i<m->L;i++) {
+        Layer *ly = &m->layers[i];
+        free(ly->W); free(ly->b); free(ly->z); free(ly->a);
+        free(ly->dW); free(ly->db); free(ly->dz);
+    }
+    free(m->layers); free(m->dims); free(m);
+}
+```
+
+The initializer allocates one contiguous block per logical tensor to keep ownership simple. We apply He initialization (scaled uniform) so early gradients neither explode nor vanish for ReLU. Activations and gradient buffers (`z`, `a`, `dW`, `db`, `dz`) are sized for a whole mini-batch; this avoids per-sample mallocs. Biases start at zero— with He weight scaling that’s fine because symmetry is still broken by randomized weights.
+
+## 5. Forward Pass with OpenMP (nn_forward.c)
+
+<Callout>
+    We parallelize over samples (batch dimension) which is safe and often
+    effective for small fully-connected layers.
+</Callout>
+
+```c
+#include "nn.h"
+#include <omp.h>
+#include <string.h>
+#include <math.h>
+
+void mlp_forward(MLP *m, const float *x) {
+    const int B = m->batch_size;
+    const float *prev = x; // pointer to previous activation
+    int prev_dim = m->dims[0];
+    for(int li=0; li<m->L; ++li) {
+        Layer *ly = &m->layers[li];
+        int in = ly->in_dim, out = ly->out_dim;
+        // z = W * prev + b (broadcast), shapes: (out, in) * (in, B) -> (out, B)
+        #pragma omp parallel for collapse(2)
+        for(int r=0; r<out; ++r) {
+            for(int b=0; b<B; ++b) {
+                float sum = 0.f;
+                const float *wrow = &ly->W[r*in];
+                for(int c=0; c<in; ++c) {
+                    sum += wrow[c] * prev[c*B + b]; // prev stored column-major by batch
+                }
+                ly->z[r*B + b] = sum + ly->b[r];
+            }
+        }
+        // activation
+        if(li < m->L - 1) { // ReLU for hidden layers
+            #pragma omp parallel for
+            for(int i=0;i<out*B;i++) {
+                float v = ly->z[i];
+                ly->a[i] = v > 0.f ? v : 0.f;
+            }
+        } else {
+            // softmax per sample (stable)
+            for(int b=0;b<B;b++) {
+                float maxv = -1e30f;
+                for(int r=0;r<out;r++) {
+                    float v = ly->z[r*B + b];
+                    if(v > maxv) maxv = v;
+                }
+                float sum = 0.f;
+                for(int r=0;r<out;r++) {
+                    float ex = expf(ly->z[r*B + b] - maxv);
+                    ly->a[r*B + b] = ex;
+                    sum += ex;
+                }
+                float inv = 1.f / sum;
+                for(int r=0;r<out;r++) ly->a[r*B + b] *= inv;
+            }
+        }
+        prev = ly->a;
+        prev_dim = out;
+    }
+}
+```
+
+Two nested loops (output neuron r, batch element b) are collapsed, distributing the Cartesian product across threads, which maximizes parallelism even when either dimension is small. Inside, each thread touches a unique `(r,b)` slot so there is no false sharing beyond neighboring cache lines. Hidden layers apply ReLU in a separate pass to keep the main multiply loop tight. The final layer performs a numerically stable softmax per batch column: we subtract the row max to avoid overflow, exponentiate, sum, and normalize. Using per-sample loops (not parallel) for softmax is acceptable because its arithmetic intensity is small relative to the matrix multiply.
+
+## Loss (Softmax + Cross-Entropy)
+
+<Note>
+    Cross-entropy with softmax yields gradient `p - y_true`. We clamp
+    probabilities to avoid `log(0)` instabilities.
+</Note>
+
+```c
+// nn_loss.c
+#include "nn.h"
+#include <math.h>
+
+float mlp_loss_softmax_ce(MLP *m, const int *targets) {
+    Layer *last = &m->layers[m->L-1];
+    const int B = m->batch_size;
+    const int C = last->out_dim;
+    float loss = 0.f;
+    for(int b=0;b<B;b++) {
+        int t = targets[b];
+        if(t < 0 || t >= C) continue; // skip invalid
+        float p = last->a[t*B + b];
+        if(p < 1e-9f) p = 1e-9f; // clamp
+        loss += -logf(p);
+    }
+    return loss / B;
+}
+```
+
+The probabilities for the true class are gathered from the final activation buffer `a`. We clamp to a minimum epsilon before taking the log to avoid `-inf` in degenerate numeric cases. Averaging across the batch keeps scale stable regardless of batch size.
+
+## Backpropagation (Gradient Computation)
+
+Backprop will: (1) form `dz_last = (p - one_hot)` for the softmax+CE fusion; (2) propagate `dz` through each hidden layer by multiplying by the transposed weight matrix and masking where ReLU was inactive; (3) accumulate `dW` as an outer product of `dz` and previous activations; and (4) accumulate `db` via reduction over the batch. All loops are independent in the batch dimension, so OpenMP can parallelize either neuron-major or batch-major traversals. Accumulating into shared `dW` requires either atomic adds, privatization + reduction, or structuring the loop so each thread writes a distinct slice (preferred: parallelize outer neuron loop).
+
+```c
+// nn_backward.c
+#include "nn.h"
+#include <string.h>
+#include <omp.h>
+
+void mlp_backward(MLP *m, const float *x, const int *targets) {
+    const int B = m->batch_size;
+    // 1. Gradient at output: dz_L = p - one_hot
+    Layer *last = &m->layers[m->L-1];
+    const int C = last->out_dim;
+    for(int r=0;r<C;r++) {
+        for(int b=0;b<B;b++) {
+            last->dz[r*B + b] = last->a[r*B + b];
+        }
+    }
+    for(int b=0;b<B;b++) {
+        int t = targets[b];
+        if(t>=0 && t<C) last->dz[t*B + b] -= 1.f;
+    }
+    // 2. Backward through layers
+    for(int li = m->L-1; li >= 0; --li) {
+        Layer *ly = &m->layers[li];
+        const float *prev_a = (li==0) ? x : m->layers[li-1].a;
+        int in = ly->in_dim, out = ly->out_dim;
+        // dW = dz * prev_a^T  (out, B) * (B, in) -> (out, in)
+        // db = sum_b dz
+        memset(ly->dW, 0, sizeof(float)*out*in);
+        memset(ly->db, 0, sizeof(float)*out);
+        #pragma omp parallel for
+        for(int r=0;r<out;r++) {
+            float db_acc = 0.f;
+            for(int b=0;b<B;b++) {
+                float g = ly->dz[r*B + b];
+                db_acc += g;
+                for(int c=0;c<in;c++) {
+                    ly->dW[r*in + c] += g * prev_a[c*B + b];
+                }
+            }
+            ly->db[r] = db_acc;
+        }
+        // If not first layer, compute dz for previous layer
+        if(li > 0) {
+            Layer *prev = &m->layers[li-1];
+            int prev_out = prev->out_dim; // also in
+            // prev->dz sized (prev_out * B)
+            memset(prev->dz, 0, sizeof(float)*prev_out*B);
+            #pragma omp parallel for collapse(2)
+            for(int r=0;r<prev_out;r++) {
+                for(int b=0;b<B;b++) {
+                    float acc = 0.f;
+                    for(int k=0;k<out;k++) {
+                        acc += ly->W[k*in + r] * ly->dz[k*B + b];
+                    }
+                    // ReLU mask: if pre-activation <=0 then gradient 0
+                    float zprev = prev->z[r*B + b];
+                    prev->dz[r*B + b] = (zprev > 0.f) ? acc : 0.f;
+                }
+            }
+        }
+    }
+}
+```
+
+The outer neuron loop collects weight and bias gradients so each thread updates a distinct row, avoiding atomics. A second nested loop projects gradients backward: multiply by the weight matrix rows (effectively `W^T * dz`) and apply the stored ReLU mask via the sign of pre-activations. For moderate sizes, the naive triple loop is acceptable; vectorization or blocking can come later.
+
+## SGD Step
+
+The SGD update subtracts `lr * (dW + l2_lambda * W)` (weight decay) and `lr * db`. A simple fused loop over each weight row keeps memory streaming linear. Because gradients are already aggregated across the batch, this step is purely sequential memory bandwidth and rarely benefits from threading at small sizes— measure before parallelizing.
+
+```c
+// nn_sgd.c
+#include "nn.h"
+#include <omp.h>
+
+void mlp_sgd_step(MLP *m, float lr, float l2_lambda) {
+    for(int li=0; li<m->L; ++li) {
+        Layer *ly = &m->layers[li];
+        int in = ly->in_dim, out = ly->out_dim;
+        int nW = in*out;
+        #pragma omp parallel for
+        for(int i=0;i<nW;i++) {
+            float w = ly->W[i];
+            ly->W[i] = w - lr * (ly->dW[i] + l2_lambda * w);
+        }
+        #pragma omp parallel for
+        for(int r=0;r<out;r++) {
+            ly->b[r] -= lr * ly->db[r];
+        }
+    }
+}
+```
+
+Weights apply L2 decay inline with the update; biases do not. Parallelizing both loops is optional, but helps when layer sizes exceed a few thousand parameters. For very small layers, remove the pragmas to avoid overhead.
+
+## Toy Training Loop & Commentary
+
+A typical loop: generate (or load) a batch, run forward, compute loss, backward, then `mlp_sgd_step`. Time just the hot path (forward + backward + update) to evaluate scaling. For tiny dimension sizes, thread startup may dominate; increase batch or layer width to see clearer speedups. Always validate that single-thread correctness (loss decreasing) holds before enabling OpenMP.
+
+## OpenMP Tuning Tips
+
+| Goal                          | Strategy                                                                   |
+| ----------------------------- | -------------------------------------------------------------------------- |
+| Reduce thread launch overhead | Use larger batch sizes or fuse loops                                       |
+| Improve cache locality        | Block over neurons (tile outer dimension)                                  |
+| Avoid false sharing           | Align arrays to 64B and pad bias/grad arrays                               |
+| Better scaling                | Parallelize a higher-level batch loop (accumulate loss per-thread, reduce) |
+| NUMA awareness                | First-touch initialize weights inside parallel region                      |
+
+## Measuring Speed
+
+You can wrap forward/backward/update in a timed region:
+
+```c
+#include <omp.h>
+#include <stdio.h>
+
+double t0 = omp_get_wtime();
+for(int it=0; it<steps; ++it) {
+    make_data(x,y,dims[0],B);
+    mlp_forward(m,x);
+    float loss = mlp_loss_softmax_ce(m,y);
+    mlp_backward(m,x,y);
+    mlp_sgd_step(m,lr,l2);
+}
+double t1 = omp_get_wtime();
+printf("avg iter ms=%.3f\n", 1000.0*(t1-t0)/steps);
+```
+
+<Note>
+    Compare runs with `OMP_NUM_THREADS=1,2,4,8` and plot the speedup; replace
+    the performance placeholder figure accordingly.
+</Note>
+
+## Where to Go Next
+
+-   Implement accuracy metric: argmax of final `a` vs target.
+-   Add Adam: track `m` and `v` vectors per layer; bias-correct each step.
+-   Introduce learning rate schedule (cosine decay or step).
+-   Integrate simple serialization (write `W` and `b` arrays to a binary file).
+-   Try a deeper network and observe diminishing returns vs memory bandwidth.
+
+<Callout type="success">
+    Understanding these fundamentals sharpens intuition for when high-level
+    frameworks bottleneck: you can spot when memory layout, not pure FLOPs, is
+    the limiting factor.
+</Callout>
+
+---
