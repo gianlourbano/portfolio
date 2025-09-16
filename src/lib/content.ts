@@ -8,11 +8,22 @@ export type Meta = {
     tags?: string[];
     summary?: string;
     cover?: string;
+    readingTime?: {
+        text: string; // e.g. "5 min read"
+        minutes?: number;
+        words?: number;
+    };
 };
 
 type Module = {
     default: React.ComponentType<any>;
     meta: Meta;
+    readingTime?: {
+        text: string;
+        minutes: number;
+        time?: number;
+        words: number;
+    };
 };
 
 const projectModules = import.meta.glob("../../content/projects/*.mdx", {
@@ -22,8 +33,21 @@ const postModules = import.meta.glob("../../content/blog/*.mdx", {
     eager: true,
 }) as Record<string, Module>;
 
-const projects = Object.values(projectModules).map((m) => m.meta);
-const posts = Object.values(postModules).map((m) => m.meta);
+function mergeReadingTime(mods: Record<string, Module>) {
+    return Object.values(mods).map((m) => {
+        if (m.readingTime && !m.meta.readingTime) {
+            m.meta.readingTime = {
+                text: m.readingTime.text,
+                minutes: m.readingTime.minutes,
+                words: m.readingTime.words,
+            };
+        }
+        return m.meta;
+    });
+}
+
+const projects = mergeReadingTime(projectModules);
+const posts = mergeReadingTime(postModules);
 
 export function useContentIndex() {
     return useMemo(

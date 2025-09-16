@@ -8,6 +8,7 @@ import { Files } from "./mdx/Files";
 import { Tabs, Tab } from "./mdx/Tabs";
 import { Details } from "./mdx/Details";
 import { Kbd, Badge, Stat } from "./mdx/Inline";
+import { TwoColumn } from "./mdx/TwoColumn";
 
 export function AboutContent() {
     const components = {
@@ -22,6 +23,7 @@ export function AboutContent() {
         Kbd,
         Badge,
         Stat,
+        TwoColumn,
     } as const;
     return (
         <MDXProvider components={components}>

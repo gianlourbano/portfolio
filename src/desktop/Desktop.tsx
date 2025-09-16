@@ -10,16 +10,10 @@ import {
 } from "../lib/content";
 import { React95Icon } from "../ui/React95Icons";
 import { Button } from "react95";
-import { MDXProvider } from "@mdx-js/react";
-import { Callout } from "../ui/mdx/Callout";
-import { Figure } from "../ui/mdx/Figure";
-import { Note } from "../ui/mdx/Note";
-import { Warning } from "../ui/mdx/Warning";
-import { Files } from "../ui/mdx/Files";
+// MDX component imports removed; DocLayout provides them.
 import { AboutContent } from "../ui/AboutContent";
-import { Tabs, Tab } from "../ui/mdx/Tabs";
-import { Details } from "../ui/mdx/Details";
-import { Kbd, Badge, Stat } from "../ui/mdx/Inline";
+// (Tabs, Details, etc. now supplied via DocLayout where needed.)
+import { DocLayout } from "../ui/DocLayout";
 
 // Retro-only: settings and sounds removed per request
 
@@ -55,6 +49,8 @@ export function Desktop() {
     const lastUnminimized = useRef<string[]>([]);
     const [showDesktop, setShowDesktop] = useState(false);
     const TASKBAR_H = 40;
+    const openDocsRef = useRef<Set<string>>(new Set()); // keys: `${type}:${slug}` lowercase
+    const deepLinkHandledRef = useRef(false); // guard against StrictMode double-invoke
 
     useEffect(() => {
         const closeOnClickOutside = () => setStartOpen(false);
@@ -177,11 +173,71 @@ export function Desktop() {
         setActiveId(w.id);
     };
 
-    const openDoc = (type: "project" | "post", slug: string) => {
+    const normalizeSlug = (s: string) =>
+        decodeURIComponent(s)
+            .replace(/^[#/]+|\s+$/g, "")
+            .trim()
+            .toLowerCase();
+
+    const openDoc = (
+        type: "project" | "post",
+        rawSlug: string,
+        opts?: { forceMax?: boolean; allowInvalid?: boolean }
+    ) => {
+        const slug = normalizeSlug(rawSlug);
+        if (!slug) return;
+        const key = `${type}:${slug}`;
+        if (openDocsRef.current.has(key)) {
+            // Focus existing
+            const existing = wins.find(
+                (w) =>
+                    w.kind === "doc" &&
+                    w.payload &&
+                    w.payload.type === type &&
+                    w.payload.slug === slug
+            );
+            if (existing) {
+                setWins((prev) =>
+                    prev.map((w) =>
+                        w.id === existing.id
+                            ? {
+                                  ...w,
+                                  minimized: false,
+                                  maximized: opts?.forceMax
+                                      ? true
+                                      : w.maximized,
+                                  z: ++zCounter.current,
+                              }
+                            : w
+                    )
+                );
+                setActiveId(existing.id);
+            }
+            return;
+        }
         const meta =
             type === "project"
                 ? projects.find((p) => p.slug === slug)
                 : posts.find((p) => p.slug === slug);
+        if (!meta && !opts?.allowInvalid) {
+            // Open a lightweight error window instead of a broken doc
+            const baseErr = { x: 220, y: 140, w: 400, h: 180 };
+            const { bounds } = computeInitialBounds(baseErr, 0);
+            const errWin: Win = {
+                id: `err-${++idCounter.current}`,
+                kind: "doc",
+                title: `Not found: ${slug}`,
+                icon: "Doc",
+                minimized: false,
+                maximized: false,
+                z: ++zCounter.current,
+                bounds,
+                payload: { type, slug },
+            };
+            setWins((prev) => [...prev, errWin]);
+            setActiveId(errWin.id);
+            return;
+        }
         const title = meta?.title || slug;
         const base = { x: 160, y: 120, w: 640, h: 420 };
         const { bounds, maximize } = computeInitialBounds(base, 24);
@@ -191,14 +247,73 @@ export function Desktop() {
             title,
             icon: "Doc",
             minimized: false,
-            maximized: maximize,
+            maximized: opts?.forceMax ? true : maximize,
             z: ++zCounter.current,
             bounds,
             payload: { type, slug },
         };
         setWins((prev) => [...prev, doc]);
         setActiveId(doc.id);
+        openDocsRef.current.add(key);
     };
+
+    // Initial URL param opening (one-shot)
+    // Keep ref set in sync if windows change (e.g., restored from localStorage or closed later when that feature exists)
+    useEffect(() => {
+        const set = new Set<string>();
+        for (const w of wins) {
+            if (w.kind === "doc" && w.payload) {
+                set.add(`${w.payload.type}:${w.payload.slug}`);
+            }
+        }
+        openDocsRef.current = set;
+    }, [wins]);
+
+    useEffect(() => {
+        if (deepLinkHandledRef.current) return; // already processed
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const hashRaw = window.location.hash.startsWith("#")
+                ? window.location.hash.slice(1)
+                : "";
+            const hashPairs = hashRaw
+                .split("&")
+                .map((kv) => kv.split("="))
+                .filter((p) => p.length === 2);
+            const hashMap = Object.fromEntries(hashPairs);
+            const blogSlug =
+                params.get("blog") ||
+                params.get("post") ||
+                hashMap.post ||
+                hashMap.blog;
+            const projectSlug = params.get("project") || hashMap.project;
+            let openedType: "post" | "project" | null = null;
+            let openedSlug: string | null = null;
+            if (blogSlug) {
+                openDoc("post", blogSlug, { forceMax: true });
+                openedType = "post";
+                openedSlug = blogSlug;
+            } else if (projectSlug) {
+                openDoc("project", projectSlug, { forceMax: true });
+                openedType = "project";
+                openedSlug = projectSlug;
+            }
+            if (openedType && openedSlug) {
+                // Remove only query keys, keep a canonical hash for sharing
+                ["blog", "post", "project"].forEach((k) => params.delete(k));
+                const qs = params.toString();
+                const basePath = qs
+                    ? `${window.location.pathname}?${qs}`
+                    : window.location.pathname;
+                const canonicalHash = `#${openedType}=${encodeURIComponent(
+                    normalizeSlug(openedSlug)
+                )}`;
+                window.history.replaceState({}, "", basePath + canonicalHash);
+            }
+        } catch {}
+        deepLinkHandledRef.current = true;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const activateWin = (id: string) => {
         setWins((prev) =>
@@ -634,25 +749,11 @@ function DocView({
         return <div className="prose">Not found or invalid document.</div>;
     const Component = mod.default as React.ComponentType<any>;
     try {
-        const mdxComponents = {
-            Callout,
-            Figure,
-            Note,
-            Warning,
-            Files,
-            Tabs,
-            Tab,
-            Details,
-            Kbd,
-            Badge,
-            Stat,
-        } as const;
+        // Use shared DocLayout for consistent header & wrapper
         return (
-            <MDXProvider components={mdxComponents}>
-                <div className="prose">
-                    <Component />
-                </div>
-            </MDXProvider>
+            <DocLayout meta={mod.meta}>
+                <Component />
+            </DocLayout>
         );
     } catch (e) {
         return <div className="prose">Error rendering document.</div>;

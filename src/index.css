@@ -312,7 +312,7 @@ body {
 /* Pages */
 .page {
     padding: 24px;
-    max-width: 860px;
+    max-width: 1050px;
     margin: 0 auto;
 }
 .desktop-icons {
@@ -394,6 +394,8 @@ body {
 }
 
 .page-header {
+    margin: 0 0 24px;
+    z-index: 1000;
     display: flex;
     align-items: baseline;
     justify-content: space-between;
@@ -402,6 +404,8 @@ body {
 /* MDX prose defaults */
 .prose {
     line-height: 1.65;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 .prose h1,
 .prose h2,
@@ -790,4 +794,62 @@ body {
 }
 .taskbar .task-btn.minimized {
     opacity: 0.9;
+}
+
+/* Retro scrollbars: target actual scroll containers for reliability */
+:root[data-theme="retro"] .window-body,
+:root[data-theme="retro"] .terminal-out,
+:root[data-theme="retro"] .prose pre {
+    /* Firefox */
+    scrollbar-color: #808080 #c0c0c0; /* thumb, track */
+    scrollbar-width: auto; /* thick, Win95-like */
+}
+/* WebKit-based browsers */
+:root[data-theme="retro"] .window-body::-webkit-scrollbar,
+:root[data-theme="retro"] .terminal-out::-webkit-scrollbar,
+:root[data-theme="retro"] .prose pre::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+}
+:root[data-theme="retro"] .window-body::-webkit-scrollbar-track,
+:root[data-theme="retro"] .terminal-out::-webkit-scrollbar-track,
+:root[data-theme="retro"] .prose pre::-webkit-scrollbar-track {
+    background: #c0c0c0;
+    border: 2px solid #fff;
+    border-bottom-color: #404040;
+    border-right-color: #404040;
+}
+:root[data-theme="retro"] .window-body::-webkit-scrollbar-thumb,
+:root[data-theme="retro"] .terminal-out::-webkit-scrollbar-thumb,
+:root[data-theme="retro"] .prose pre::-webkit-scrollbar-thumb {
+    background: #c0c0c0;
+    border: 2px solid #fff;
+    border-bottom-color: #404040;
+    border-right-color: #404040;
+}
+:root[data-theme="retro"] .window-body::-webkit-scrollbar-thumb:hover,
+:root[data-theme="retro"] .terminal-out::-webkit-scrollbar-thumb:hover,
+:root[data-theme="retro"] .prose pre::-webkit-scrollbar-thumb:hover {
+    background: #d0d0d0;
+}
+:root[data-theme="retro"] .window-body::-webkit-scrollbar-thumb:active,
+:root[data-theme="retro"] .terminal-out::-webkit-scrollbar-thumb:active,
+:root[data-theme="retro"] .prose pre::-webkit-scrollbar-thumb:active {
+    border-top-color: #404040;
+    border-left-color: #404040;
+    border-bottom-color: #fff;
+    border-right-color: #fff;
+}
+:root[data-theme="retro"] .window-body::-webkit-scrollbar-corner,
+:root[data-theme="retro"] .terminal-out::-webkit-scrollbar-corner,
+:root[data-theme="retro"] .prose pre::-webkit-scrollbar-corner {
+    background: #c0c0c0;
+    border: 2px solid #fff;
+    border-bottom-color: #404040;
+    border-right-color: #404040;
+}
+
+::-webkit-scrollbar-button:horizontal:end:increment,
+::-webkit-scrollbar-button:horizontal:start:decrement {
+  display: block;
 }
