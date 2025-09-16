@@ -2,7 +2,11 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import mdx from "@mdx-js/rollup";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import rehypePrettyCode from "rehype-pretty-code";
+import rehypeKatex from "rehype-katex";
+import remarkReadingTime from "remark-reading-time";
+import readingMdxTime from "remark-reading-time/mdx";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -11,7 +15,7 @@ export default defineConfig({
     plugins: [
         react(),
         mdx({
-            remarkPlugins: [remarkGfm],
+            remarkPlugins: [remarkGfm, remarkMath, remarkReadingTime, readingMdxTime],
             rehypePlugins: [
                 [
                     rehypePrettyCode,
@@ -22,6 +26,7 @@ export default defineConfig({
                         keepBackground: true,
                     },
                 ],
+                [rehypeKatex, { output: "html" }],
             ],
         }),
     ],
